@@ -18,7 +18,7 @@ PATCHES_PER_VOL = 2                 # patchevi po pacijentu po epohi
 
 # ── Trening ──────────────────────────────────────────────────────────────────
 BATCH_SIZE    = 1
-NUM_EPOCHS    = 20
+NUM_EPOCHS    = 50
 LEARNING_RATE = 1e-4
 VAL_INTERVAL  = 2         # evaluiraj svaku N-tu epohu
 
