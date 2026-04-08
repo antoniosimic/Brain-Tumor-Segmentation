@@ -1,7 +1,8 @@
-# Podaci i outputi
+# Podaci (preveliki za git)
 data/
-outputs/
-*.pth
+outputs/train_cache/
+
+# Checkpointi (osim best_model.pth koji se commitira)
 *.ckpt
 
 # Python
@@ -13,6 +14,9 @@ __pycache__/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# IDE / alati
+.claude/
 
 # OS
 .DS_Store
