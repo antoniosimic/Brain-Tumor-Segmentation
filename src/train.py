@@ -18,7 +18,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import torch
-from monai.data import DataLoader, Dataset, decollate_batch
+from monai.data import CacheDataset, DataLoader, Dataset, decollate_batch
 from monai.inferers import sliding_window_inference
 from monai.losses import DiceCELoss
 from monai.metrics import DiceMetric
@@ -54,8 +54,10 @@ def main():
     train_dicts, val_dicts = train_val_split(all_dicts)
     print(f"Train: {len(train_dicts)}  |  Val: {len(val_dicts)}")
 
-    train_ds = Dataset(data=train_dicts, transform=get_train_transforms())
-    val_ds   = Dataset(data=val_dicts,   transform=get_val_transforms())
+    # CacheDataset ucita sve pacijente jednom u RAM — epohe 2-N su puno brze
+    # cache_rate=1.0 = spremi sve; smanji ako nemas dovoljno RAM-a (T4 ima 16GB)
+    train_ds = CacheDataset(data=train_dicts, transform=get_train_transforms(), cache_rate=1.0, num_workers=4)
+    val_ds   = CacheDataset(data=val_dicts,   transform=get_val_transforms(),   cache_rate=1.0, num_workers=4)
 
     train_loader = DataLoader(
         train_ds,
