@@ -17,10 +17,11 @@ PATCH_SIZE      = (64, 64, 64)      # velicina 3D patcha — sigurno za T4 16GB
 PATCHES_PER_VOL = 1                 # 1 patch po pacijentu — manji efektivni batch
 
 # ── Trening ──────────────────────────────────────────────────────────────────
-BATCH_SIZE    = 1
-NUM_EPOCHS    = 50
-LEARNING_RATE = 1e-4
-VAL_INTERVAL  = 2         # evaluiraj svaku N-tu epohu
+BATCH_SIZE          = 1
+NUM_EPOCHS          = 50
+LEARNING_RATE       = 1e-4
+VAL_INTERVAL        = 2    # evaluiraj svaku N-tu epohu
+MAX_TRAIN_PATIENTS  = 100  # None = svi pacijenti; 100 = brzi trening, cacheable u RAM
 
 # ── Model ────────────────────────────────────────────────────────────────────
 MODEL_NAME   = "unet3d"   # "unet3d" ili "segresnet"

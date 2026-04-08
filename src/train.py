@@ -1,15 +1,5 @@
 """
 train.py — petlja za treniranje.
-
-Pokretanje:
-  python src/train.py
-
-Sto radi:
-  1. Ucita pacijente i napravi train/val split
-  2. Kreira DataLoader s MONAI transformacijama
-  3. Inicijalizira model, optimizer, loss
-  4. Trenira N epoha, evaluira svake VAL_INTERVAL epohe
-  5. Sprema best checkpoint prema val Dice scoreu
 """
 
 import sys
@@ -24,10 +14,12 @@ from monai.losses import DiceCELoss
 from monai.metrics import DiceMetric
 from monai.transforms import AsDiscrete, Compose
 from monai.utils import set_determinism
+from tqdm import tqdm
 
 from brats_config.config import (
     BATCH_SIZE,
     LEARNING_RATE,
+    MAX_TRAIN_PATIENTS,
     NUM_CLASSES,
     NUM_EPOCHS,
     OUTPUT_DIR,
@@ -49,52 +41,47 @@ def main():
 
     # ── Podaci ───────────────────────────────────────────────────────────────
     all_dicts = get_patient_dicts()
-    print(f"\nUkupno pacijenata: {len(all_dicts)}")
+    print(f"\nUkupno pacijenata u datasetu: {len(all_dicts)}")
 
     train_dicts, val_dicts = train_val_split(all_dicts)
+
+    # Ogranici broj pacijenata za brzi trening
+    if MAX_TRAIN_PATIENTS and len(train_dicts) > MAX_TRAIN_PATIENTS:
+        train_dicts = train_dicts[:MAX_TRAIN_PATIENTS]
+
     print(f"Train: {len(train_dicts)}  |  Val: {len(val_dicts)}")
 
-    # CacheDataset ucita sve pacijente jednom u RAM — epohe 2-N su puno brze
-    # cache_rate=1.0 = spremi sve; smanji ako nemas dovoljno RAM-a (T4 ima 16GB)
-    # cache_rate=0.07 = ~70 pacijenata u RAM (~10GB) — stane na T4 x2
-    train_ds = CacheDataset(data=train_dicts, transform=get_train_transforms(), cache_rate=0.07, num_workers=2)
-    val_ds   = CacheDataset(data=val_dicts,   transform=get_val_transforms(),   cache_rate=0.07, num_workers=2)
+    train_ds = CacheDataset(
+        data=train_dicts,
+        transform=get_train_transforms(),
+        cache_rate=1.0,
+        num_workers=2,
+    )
+    val_ds = CacheDataset(
+        data=val_dicts,
+        transform=get_val_transforms(),
+        cache_rate=1.0,
+        num_workers=2,
+    )
 
-    train_loader = DataLoader(
-        train_ds,
-        batch_size=BATCH_SIZE,
-        shuffle=True,
-        num_workers=0,
-        pin_memory=(device.type == "cuda"),
-    )
-    val_loader = DataLoader(
-        val_ds,
-        batch_size=1,
-        shuffle=False,
-        num_workers=0,
-        pin_memory=(device.type == "cuda"),
-    )
+    train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True,  num_workers=0)
+    val_loader   = DataLoader(val_ds,   batch_size=1,          shuffle=False, num_workers=0)
 
     # ── Model ─────────────────────────────────────────────────────────────────
     model = build_model().to(device)
-    total, trainable = count_params(model)
-    print(f"\nModel: {total:,} parametara ({trainable:,} trainable)")
+    total, _ = count_params(model)
+    print(f"\nModel: {total:,} parametara")
 
     # ── Loss, optimizer, metrika ──────────────────────────────────────────────
     loss_fn   = DiceCELoss(to_onehot_y=True, softmax=True)
     optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-5)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS)
+    scaler    = torch.amp.GradScaler("cuda", enabled=(device.type == "cuda"))
 
-    dice_metric = DiceMetric(include_background=False, reduction="mean_batch")
-
-    # Post-processing za evaluaciju
     post_pred  = Compose([AsDiscrete(argmax=True, to_onehot=NUM_CLASSES)])
     post_label = Compose([AsDiscrete(to_onehot=NUM_CLASSES)])
 
-    # ── Mixed precision — prepolovi VRAM, gotovo ista tocnost ────────────────
-    scaler = torch.cuda.amp.GradScaler(enabled=(device.type == "cuda"))
-
-    # ── Trening ───────────────────────────────────────────────────────────────
+    dice_metric   = DiceMetric(include_background=False, reduction="mean_batch")
     best_val_dice = 0.0
     checkpoint_path = OUTPUT_DIR / "best_model.pth"
 
@@ -103,9 +90,10 @@ def main():
     for epoch in range(1, NUM_EPOCHS + 1):
         model.train()
         epoch_loss = 0.0
-        steps = 0
 
-        for batch in train_loader:
+        # Progress bar po koracima unutar epohe
+        pbar = tqdm(train_loader, desc=f"Epoha {epoch:3d}/{NUM_EPOCHS}", unit="batch")
+        for batch in pbar:
             if isinstance(batch, list):
                 inputs = torch.cat([b["image"] for b in batch]).to(device)
                 labels = torch.cat([b["seg"]   for b in batch]).to(device)
@@ -114,7 +102,7 @@ def main():
                 labels = batch["seg"].to(device)
 
             optimizer.zero_grad()
-            with torch.cuda.amp.autocast(enabled=(device.type == "cuda")):
+            with torch.amp.autocast("cuda", enabled=(device.type == "cuda")):
                 outputs = model(inputs)
                 loss    = loss_fn(outputs, labels)
             scaler.scale(loss).backward()
@@ -122,21 +110,20 @@ def main():
             scaler.update()
 
             epoch_loss += loss.item()
-            steps += 1
+            pbar.set_postfix(loss=f"{loss.item():.4f}")
 
         scheduler.step()
-        avg_loss = epoch_loss / max(steps, 1)
-        print(f"Epoha {epoch:3d}/{NUM_EPOCHS}  loss={avg_loss:.4f}", end="")
+        avg_loss = epoch_loss / len(train_loader)
+        print(f"Epoha {epoch:3d}/{NUM_EPOCHS}  avg_loss={avg_loss:.4f}", end="")
 
         # ── Validacija ────────────────────────────────────────────────────────
         if epoch % VAL_INTERVAL == 0:
             model.eval()
             with torch.no_grad():
-                for val_batch in val_loader:
+                for val_batch in tqdm(val_loader, desc="  Validacija", leave=False):
                     val_inputs = val_batch["image"].to(device)
                     val_labels = val_batch["seg"].to(device)
 
-                    # Sliding window inference na cijelom volumenu
                     val_outputs = sliding_window_inference(
                         inputs=val_inputs,
                         roi_size=PATCH_SIZE,
@@ -144,16 +131,13 @@ def main():
                         predictor=model,
                         overlap=0.5,
                     )
-
                     val_outputs = [post_pred(i)  for i in decollate_batch(val_outputs)]
                     val_labels  = [post_label(i) for i in decollate_batch(val_labels)]
                     dice_metric(y_pred=val_outputs, y=val_labels)
 
-            # Dice po klasi (ignoriramo background — index 0)
-            metric = dice_metric.aggregate()  # shape: (num_classes - 1,)
+            metric     = dice_metric.aggregate()
             dice_metric.reset()
-
-            mean_dice = metric.mean().item()
+            mean_dice  = metric.mean().item()
             class_dice = metric.tolist()
 
             print(f"  |  val Dice={mean_dice:.4f}  "
@@ -163,12 +147,12 @@ def main():
             if mean_dice > best_val_dice:
                 best_val_dice = mean_dice
                 torch.save(model.state_dict(), checkpoint_path)
-                print("  ← BEST", end="")
+                print("  <- BEST", end="")
 
-        print()  # novi red
+        print()
 
     print(f"\nTreniranje zavrseno. Najbolji val Dice: {best_val_dice:.4f}")
-    print(f"Checkpoint spremljen: {checkpoint_path}")
+    print(f"Checkpoint: {checkpoint_path}")
 
 
 if __name__ == "__main__":
