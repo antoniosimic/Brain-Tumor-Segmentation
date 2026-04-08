@@ -20,7 +20,7 @@ PATCHES_PER_VOL = 1                 # 1 patch po pacijentu — manji efektivni b
 BATCH_SIZE          = 1
 NUM_EPOCHS          = 50
 LEARNING_RATE       = 1e-4
-VAL_INTERVAL        = 2    # evaluiraj svaku N-tu epohu
+VAL_INTERVAL        = 5    # evaluiraj svaku N-tu epohu
 MAX_TRAIN_PATIENTS  = 100  # None = svi pacijenti; 100 = brzi trening, cacheable u RAM
 
 # ── Model ────────────────────────────────────────────────────────────────────

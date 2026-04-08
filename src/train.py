@@ -127,9 +127,9 @@ def main():
                     val_outputs = sliding_window_inference(
                         inputs=val_inputs,
                         roi_size=PATCH_SIZE,
-                        sw_batch_size=2,
+                        sw_batch_size=1,
                         predictor=model,
-                        overlap=0.5,
+                        overlap=0.25,
                     )
                     val_outputs = [post_pred(i)  for i in decollate_batch(val_outputs)]
                     val_labels  = [post_label(i) for i in decollate_batch(val_labels)]
