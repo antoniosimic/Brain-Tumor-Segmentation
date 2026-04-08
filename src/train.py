@@ -91,6 +91,9 @@ def main():
     post_pred  = Compose([AsDiscrete(argmax=True, to_onehot=NUM_CLASSES)])
     post_label = Compose([AsDiscrete(to_onehot=NUM_CLASSES)])
 
+    # ── Mixed precision — prepolovi VRAM, gotovo ista tocnost ────────────────
+    scaler = torch.cuda.amp.GradScaler(enabled=(device.type == "cuda"))
+
     # ── Trening ───────────────────────────────────────────────────────────────
     best_val_dice = 0.0
     checkpoint_path = OUTPUT_DIR / "best_model.pth"
@@ -103,7 +106,6 @@ def main():
         steps = 0
 
         for batch in train_loader:
-            # batch moze biti lista patcha (PATCHES_PER_VOL > 1)
             if isinstance(batch, list):
                 inputs = torch.cat([b["image"] for b in batch]).to(device)
                 labels = torch.cat([b["seg"]   for b in batch]).to(device)
@@ -112,10 +114,12 @@ def main():
                 labels = batch["seg"].to(device)
 
             optimizer.zero_grad()
-            outputs = model(inputs)
-            loss    = loss_fn(outputs, labels)
-            loss.backward()
-            optimizer.step()
+            with torch.cuda.amp.autocast(enabled=(device.type == "cuda")):
+                outputs = model(inputs)
+                loss    = loss_fn(outputs, labels)
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
 
             epoch_loss += loss.item()
             steps += 1
