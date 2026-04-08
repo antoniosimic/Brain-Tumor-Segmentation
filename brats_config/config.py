@@ -21,7 +21,7 @@ BATCH_SIZE          = 1
 NUM_EPOCHS          = 50
 LEARNING_RATE       = 1e-4
 VAL_INTERVAL        = 5    # evaluiraj svaku N-tu epohu
-MAX_TRAIN_PATIENTS  = 100  # None = svi pacijenti; 100 = brzi trening, cacheable u RAM
+MAX_TRAIN_PATIENTS  = 80   # None = svi pacijenti; 80 = ~11GB RAM, sigurno za T4
 
 # ── Model ────────────────────────────────────────────────────────────────────
 MODEL_NAME   = "unet3d"   # "unet3d" ili "segresnet"

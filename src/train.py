@@ -51,18 +51,15 @@ def main():
 
     print(f"Train: {len(train_dicts)}  |  Val: {len(val_dicts)}")
 
+    # Train: cachiramo sve (MAX_TRAIN_PATIENTS=80 ~11GB, stane u RAM)
     train_ds = CacheDataset(
         data=train_dicts,
         transform=get_train_transforms(),
         cache_rate=1.0,
         num_workers=2,
     )
-    val_ds = CacheDataset(
-        data=val_dicts,
-        transform=get_val_transforms(),
-        cache_rate=1.0,
-        num_workers=2,
-    )
+    # Val: bez cachea — koristimo ga samo jednom po validaciji, ne isplati se
+    val_ds = Dataset(data=val_dicts, transform=get_val_transforms())
 
     train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True,  num_workers=0)
     val_loader   = DataLoader(val_ds,   batch_size=1,          shuffle=False, num_workers=0)
