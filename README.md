@@ -1,225 +1,171 @@
-# Brain Tumor Segmentation
+# Brain Tumor Segmentation — BraTS 2021
 
-## Opis projekta
+Semanticka segmentacija mozdanih tumora na MRI snimkama pomocu dubokog ucenja.  
+Dataset: [MICCAI BraTS 2021 Task 1](https://www.kaggle.com/datasets/dschettler8845/brats-2021-task1/data)
 
-Projekt se bavi semantičkom segmentacijom moždanih tumora na multispektralnim MRI snimkama koristeći metode dubokog učenja. Kao izvor podataka koristi se **MICCAI BraTS 2021 Task 1** skup podataka, koji za svakog pacijenta sadrži četiri MRI volumena snimljena u zajedničkom prostoru.
+---
 
-Cilj je razviti model koji za svaki voksel određuje pripada li:
+## Sto radi ovaj projekt
 
-- zdravom tkivu
-- nekrotičnoj jezgri tumora
-- edemu
-- aktivnom dijelu tumora
+Za svakog pacijenta postoje 4 MRI volumena (modaliteta). Model ih uzima kao 4-kanalni 3D ulaz i za svaki voksel predvida jednu od 4 klase:
 
-Projekt je zamišljen kao potpuni pipeline koji uključuje analizu podataka, preprocessing, odabir i treniranje modela, postprocessing te evaluaciju i usporedbu rezultata.
+| Label | Klasa |
+|-------|-------|
+| 0 | Zdravo tkivo (pozadina) |
+| 1 | Nekroticna jezgra (NCR) |
+| 2 | Edem (ED) |
+| 3 | Aktivni tumor (ET) — originalno label 4 u BraTS datasetu |
 
-## Podaci
+Evaluacija se radi po 3 izvedene BraTS regije: **WT** (cijeli tumor), **TC** (jezgra), **ET** (aktivni dio).
 
-Za svakog pacijenta koriste se četiri MRI modaliteta:
+---
 
-- **FLAIR**: naglašava edem
-- **T1**: prikazuje anatomske granice zdravog tkiva
-- **T1ce**: ističe aktivnu jezgru tumora nakon kontrasta
-- **T2**: pomaže u detekciji tekućine i promjena u tkivu
+## Struktura repozitorija
 
-Ova četiri volumena tretiraju se kao četiri ulazna kanala jednog 3D uzorka.
-
-BraTS 2021 oznake segmentacije su:
-
-- `0` pozadina / zdravo tkivo
-- `1` nekrotična jezgra tumora (`NCR`)
-- `2` edem (`ED`)
-- `4` aktivni dio tumora (`ET`)
-
-U praksi je preporučeno tijekom treniranja napraviti remap oznaka `0, 1, 2, 4 -> 0, 1, 2, 3`, kako bi model radio s uzastopnim indeksima klasa.
-
-Važna prednost BraTS skupa podataka je što su volumeni već:
-
-- registrirani u isti anatomski prostor
-- resamplirani na istu rezoluciju
-- skull-stripped
-
-To znači da se može fokusirati na modeliranje i kvalitetan preprocessing bez dodatne registracije između modaliteta.
-
-## Preporučene tehnologije
-
-Za ovaj projekt preporučuje se sljedeći tehnološki stack:
-
-- **Python** kao glavni programski jezik
-- **PyTorch** kao osnovni framework za duboko učenje
-- **MONAI** za medicinsku segmentaciju i 3D imaging workflow
-- **NiBabel** za učitavanje i rad s NIfTI (`.nii.gz`) datotekama
-- **NumPy** i **Pandas** za obradu podataka
-- **Matplotlib** i **Seaborn** za analizu i vizualizaciju
-- **scikit-learn** za validaciju, podjelu skupova i pomoćne metrike
-
-### Zašto PyTorch + MONAI?
-
-Najpraktičniji put za ovakav projekt je **PyTorch + MONAI**.
-
-Razlozi:
-
-- MONAI je razvijen specifično za medicinske slike i 3D segmentaciju
-- sadrži gotove transformacije za volumene, patch-based trening i inferenciju
-- uključuje gotove mreže, loss funkcije i metrike prilagođene segmentaciji
-- dobro se nadovezuje na PyTorch i standardni istraživački workflow
-
-TensorFlow je moguć izbor, ali za MRI segmentaciju i studentski projekt ove vrste PyTorch i MONAI u pravilu daju brži i čišći razvoj.
-
-## Preporučeni smjer rada
-
-Projekt je najbolje raditi postupno, od stabilnog baseline rješenja prema složenijim poboljšanjima.
-
-### 1. Analiza podataka
-
-Prvi korak je detaljno razumjeti ulazne podatke:
-
-- provjeriti dimenzije svih volumena
-- potvrditi da svi modaliteti jednog pacijenta imaju kompatibilan shape
-- analizirati raspodjelu intenziteta po modalitetima
-- provjeriti omjer tumorskih i netumorskih voksela
-- procijeniti neuravnoteženost među klasama
-
-Posebno je važno napraviti **patient-level split**, a ne split po sliceovima, kako bi se izbjeglo curenje informacija između skupa za treniranje i validacijskog skupa.
-
-### 2. Preprocessing
-
-Preprocessing bi trebao biti jednostavan, ali konzistentan:
-
-- remap oznaka na uzastopne klase
-- normalizacija intenziteta po volumenu ili po modalitetu
-- cropanje na brain region ili regiju interesa
-- treniranje na 3D patchovima umjesto na cijelim volumenima
-- osnovne augmentacije poput flipova, malih rotacija i promjena intenziteta
-
-Zbog veličine MRI volumena patch-based trening je najrealniji pristup, posebno ako je dostupna ograničena GPU memorija.
-
-### 3. Arhitektura modela
-
-Preporučeni početni model je neki stabilan **3D convolutional baseline**, npr.:
-
-- `3D UNet`
-- `SegResNet`
-
-To je vrlo dobar izbor za prvi radni model jer:
-
-- podržavaju 3D ulaz
-- dovoljno su jaki za ozbiljan baseline
-- jednostavniji su za treniranje i debugiranje od transformera
-
-Naprednije opcije koje se mogu isprobati kasnije:
-
-- `SwinUNETR`
-- `nnU-Net` kao snažan baseline za usporedbu
-
-Preporuka je **ne krenuti odmah s transformerima**, nego prvo dobiti pouzdan rezultat s 3D U-Net stilom modela.
-
-### 4. Treniranje
-
-Za treniranje je preporučeno:
-
-- koristiti kombinirani loss poput `Dice + Cross Entropy`
-- pratiti validacijsku metriku nakon svake epohe
-- spremati najbolje checkpointove
-- koristiti early stopping ako trening postane nestabilan
-- koristiti sliding-window inferenciju za validaciju i testiranje
-
-Klase tumora zauzimaju mali dio volumena, pa sama cross-entropy funkcija često nije dovoljna. Dice komponenta je zato vrlo korisna zbog neuravnoteženosti klasa.
-
-### 5. Postprocessing
-
-Nakon predikcije moguće je dodatno poboljšati rezultate jednostavnim postprocessing koracima:
-
-- uklanjanje vrlo malih izoliranih komponenti
-- popunjavanje sitnih rupa u maski
-- prilagodba pragova ako se koriste probabilističke mape
-
-Postprocessing ne treba biti prekompliciran. Često i mali zahvati daju vidljivo bolje i čišće segmentacije.
-
-### 6. Evaluacija i usporedba
-
-Evaluaciju treba raditi nad BraTS regijama:
-
-- **ET**: enhancing tumor
-- **TC**: tumor core
-- **WT**: whole tumor
-
-Preporučene metrike:
-
-- **Dice score**
-- **Hausdorff Distance 95% (HD95)**
-- po potrebi i **sensitivity** i **specificity**
-
-Osim konačnih metrika, korisno je napraviti i vizualnu usporedbu:
-
-- ground truth vs. predikcija
-- usporedba više modela ili više preprocessing varijanti
-- primjeri dobrih i loših segmentacija
-
-## Preporučeni eksperimentalni plan
-
-Najrealniji plan za ovakav projekt je:
-
-1. napraviti potpuno funkcionalan baseline pipeline
-2. istrenirati prvi `3D UNet` ili `SegResNet`
-3. evaluirati rezultate na validacijskom skupu
-4. dodati augmentacije i bolji sampling patchova
-5. isprobati još jednu arhitekturu ili jedan jači baseline
-6. usporediti rezultate i izvući zaključke
-
-Na taj način projekt ostaje izvediv, a opet pokazuje cijeli istraživački proces.
-
-## Preporučena struktura repozitorija
-
-Kako bi projekt ostao pregledan, preporučena je ovakva struktura:
-
-```text
-.
-├── README.md
-├── data/
-├── notebooks/
-├── src/
-│   ├── dataset.py
-│   ├── transforms.py
-│   ├── model.py
-│   ├── train.py
-│   ├── infer.py
-│   ├── postprocess.py
-│   └── evaluate.py
+```
+Brain-Tumor-Segmentation/
 ├── configs/
-├── outputs/
+│   └── config.py          # sve postavke na jednom mjestu (patch size, epohe, LR...)
+├── src/
+│   ├── dataset.py         # ucitavanje pacijenata, train/val split
+│   ├── transforms.py      # preprocessing pipeline (normalizacija, patch sampling, augmentacije)
+│   ├── model.py           # 3D UNet i SegResNet (biramo u config.py)
+│   ├── train.py           # petlja za treniranje
+│   ├── postprocess.py     # (TODO) ciscenje predikcija
+│   └── evaluate.py        # (TODO) Dice, HD95, vizualizacije
+├── notebooks/
+│   └── explore_data.ipynb # vizualna eksploracija BraTS podataka
+├── data/                  # ovdje idu pacijenti — NIJE na GitHubu (.gitignore)
+├── outputs/               # checkpointi i slike — NIJE na GitHubu
 └── requirements.txt
 ```
 
-Ova struktura olakšava odvajanje eksperimentalnog koda, modela, evaluacije i rezultata.
+---
 
-## Glavne preporuke
+## Postavljanje okruzenja
 
-- krenuti s jednostavnim i stabilnim baseline modelom
-- koristiti `patient-level` podjelu podataka
-- trenirati na 3D patchovima
-- koristiti `PyTorch + MONAI` kao glavni stack
-- rezultate prikazati i brojčano i vizualno
-- uvoditi složenije ideje tek nakon stabilnog osnovnog pipelinea
+```bash
+git clone https://github.com/antoniosimic/Brain-Tumor-Segmentation.git
+cd Brain-Tumor-Segmentation
+git checkout baseline-unet3d
 
-## Zaključak
+pip install -r requirements.txt
+```
 
-Ovaj projekt je vrlo dobar primjer primjene dubokog učenja na medicinskim slikama jer kombinira stvarni 3D medicinski podatkovni skup, višekanalni ulaz, klasnu neuravnoteženost i standardne izazove semantičke segmentacije.
+---
 
-Najbolji izvedbeni put je:
+## Podaci
 
-- **Python + PyTorch + MONAI**
-- **3D UNet ili SegResNet** kao početni model
-- **patch-based trening**
-- **Dice-based evaluacija uz HD95**
+Dataset je prevelik za Git (~13 GB). Preuzmi ga na jedan od dva nacina:
 
-Takav pristup je tehnički realan, dobro objašnjiv u projektnom radu i dovoljno ozbiljan da pokaže razumijevanje cijelog procesa od podataka do evaluacije.
+**Opcija A — Kaggle CLI:**
+```bash
+# Postavi Kaggle API token (kaggle.com -> Settings -> API -> Create New Token)
+mkdir -p ~/.kaggle
+cp kaggle.json ~/.kaggle/kaggle.json
 
-## Korisni izvori
+# Preuzmi i raspakiraj
+cd data/
+kaggle datasets download dschettler8845/brats-2021-task1 --file BraTS2021_Training_Data.tar
+tar -xf BraTS2021_Training_Data.tar
+```
 
-- [BraTS 2021 službena stranica](https://www.med.upenn.edu/cbica/brats2021/)
-- [MONAI dokumentacija](https://docs.monai.io/en/stable/)
-- [PyTorch dokumentacija](https://docs.pytorch.org/docs/main/)
-- [nnU-Net repozitorij](https://github.com/MIC-DKFZ/nnUNet)
-- [NiBabel dokumentacija](https://nipy.org/nibabel/reference/nibabel.html)
-- [TorchIO dokumentacija](https://torchio.readthedocs.io/)
+**Opcija B — Kaggle notebook (preporuceno za trening):**  
+Dataset je vec dostupan na Kaggleu bez downloadanja — vidi sekciju "Trening na Kaggleu" ispod.
+
+Ocekivana struktura `data/` mape nakon raspakiravanja:
+```
+data/
+├── BraTS2021_00000/
+│   ├── BraTS2021_00000_flair.nii.gz
+│   ├── BraTS2021_00000_t1.nii.gz
+│   ├── BraTS2021_00000_t1ce.nii.gz
+│   ├── BraTS2021_00000_t2.nii.gz
+│   └── BraTS2021_00000_seg.nii.gz
+├── BraTS2021_00002/
+│   └── ...
+```
+
+---
+
+## Lokalno pokretanje (za razvoj i testiranje)
+
+### Eksploracija podataka
+```bash
+jupyter notebook notebooks/explore_data.ipynb
+```
+
+### Provjera da sve radi (s 2 sample pacijenta)
+```bash
+python src/dataset.py
+python src/transforms.py
+python src/model.py
+```
+
+### Pokretanje treninga (lokalno, CPU — sporo, samo za debug)
+```bash
+python src/train.py
+```
+
+---
+
+## Trening na Kaggleu (preporuceno — besplatan GPU T4)
+
+1. Idi na [kaggle.com](https://kaggle.com) → **Create** → **New Notebook**
+2. Dodaj dataset: desno → **Add data** → trazi `brats-2021-task1`
+3. Dodaj GitHub repo:
+```python
+# U prvoj celiji notebooka:
+!git clone https://github.com/antoniosimic/Brain-Tumor-Segmentation.git
+%cd Brain-Tumor-Segmentation
+!git checkout baseline-unet3d
+!pip install -r requirements.txt -q
+```
+4. Postavi putanju podataka i pokreni trening:
+```python
+# Kaggle dataset je na /kaggle/input/brats-2021-task1/
+import sys
+sys.path.insert(0, '/kaggle/working/Brain-Tumor-Segmentation')
+
+from configs import config
+config.DATA_DIR = __import__('pathlib').Path('/kaggle/input/brats-2021-task1')
+
+from src.train import main
+main()
+```
+5. Ukljuci GPU: desno → **Session options** → **Accelerator: GPU T4 x1**
+
+---
+
+## Konfiguracija
+
+Sve postavke su u `configs/config.py`. Najvaznije:
+
+| Parametar | Vrijednost | Opis |
+|-----------|-----------|------|
+| `MODEL_NAME` | `"unet3d"` | Promijeni u `"segresnet"` za jaci model |
+| `PATCH_SIZE` | `(128,128,128)` | Velicina 3D isjecka za trening |
+| `BATCH_SIZE` | `1` | MRI volumeni su ogromni |
+| `NUM_EPOCHS` | `100` | |
+| `LEARNING_RATE` | `1e-4` | |
+| `VAL_SPLIT` | `0.2` | 20% pacijenata za validaciju |
+
+---
+
+## Grane
+
+| Grana | Opis |
+|-------|------|
+| `main` | Stabilan kod, samo provjerene stvari |
+| `baseline-unet3d` | Trenutni baseline — 3D UNet pipeline |
+| `experiment/segresnet` | (planirano) SegResNet arhitektura |
+
+---
+
+## Tim
+
+| Clan | Zadatak |
+|------|---------|
+| Luka Bobic, Mirko Busic | Analiza podataka, Preprocessing |
+| Jakov Malic, Lovre Jurjevic | Arhitektura, Treniranje |
+| Antonio Simic, Lovro Travica | Postprocessing, Evaluacija |
