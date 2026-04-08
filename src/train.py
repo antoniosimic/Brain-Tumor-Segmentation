@@ -8,7 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import torch
-from monai.data import CacheDataset, DataLoader, Dataset, PersistentDataset, decollate_batch
+from monai.data import DataLoader, Dataset, SmartCacheDataset, decollate_batch
 from monai.inferers import sliding_window_inference
 from monai.losses import DiceCELoss
 from monai.metrics import DiceMetric
@@ -51,17 +51,19 @@ def main():
 
     print(f"Train: {len(train_dicts)}  |  Val: {len(val_dicts)}")
 
-    # Train: PersistentDataset sprema preprocessirane volumene na disk.
-    # Koristi ~1GB RAM umjesto ~20GB (CacheDataset s 150 pacijenata).
-    # Prvi epoch je sporiji (sprema cache), daljnji su brzi.
-    cache_dir = OUTPUT_DIR / "train_cache"
-    cache_dir.mkdir(exist_ok=True)
-    print(f"Cache dir: {cache_dir}")
+    # SmartCacheDataset: drzi samo CACHE_NUM pacijenata u RAM-u odjednom,
+    # rotira ih svaki epoch. Nema disk cachea, nema OOM-a.
+    # 60 pacijenata × ~135MB = ~8GB RAM — stane u T4 (13GB dostupno).
+    CACHE_NUM = 60
+    print(f"SmartCacheDataset: {len(train_dicts)} pacijenata, {CACHE_NUM} u RAM-u odjednom")
 
-    train_ds = PersistentDataset(
+    train_ds = SmartCacheDataset(
         data=train_dicts,
         transform=get_train_transforms(),
-        cache_dir=cache_dir,
+        cache_num=CACHE_NUM,
+        replace_rate=0.2,   # zamijeni 20% cachea po replacementu
+        num_init_workers=2,
+        num_replace_workers=2,
     )
     # Val: bez cachea — koristimo ga samo jednom po validaciji, ne isplati se
     val_ds = Dataset(data=val_dicts, transform=get_val_transforms())
@@ -88,6 +90,8 @@ def main():
     checkpoint_path = OUTPUT_DIR / "best_model.pth"
 
     print(f"\nKrecemo trenirati {NUM_EPOCHS} epoha...\n")
+
+    train_ds.start()   # SmartCacheDataset mora se pokrenuti
 
     for epoch in range(1, NUM_EPOCHS + 1):
         model.train()
@@ -152,6 +156,8 @@ def main():
                 print("  <- BEST", end="")
 
         print()
+
+    train_ds.shutdown()  # zaustavi background worker threadove
 
     print(f"\nTreniranje zavrseno. Najbolji val Dice: {best_val_dice:.4f}")
     print(f"Checkpoint: {checkpoint_path}")
