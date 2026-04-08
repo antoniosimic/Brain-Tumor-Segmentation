@@ -56,8 +56,9 @@ def main():
 
     # CacheDataset ucita sve pacijente jednom u RAM — epohe 2-N su puno brze
     # cache_rate=1.0 = spremi sve; smanji ako nemas dovoljno RAM-a (T4 ima 16GB)
-    train_ds = CacheDataset(data=train_dicts, transform=get_train_transforms(), cache_rate=1.0, num_workers=4)
-    val_ds   = CacheDataset(data=val_dicts,   transform=get_val_transforms(),   cache_rate=1.0, num_workers=4)
+    # cache_rate=0.1 = cachira ~100 pacijenata (~14GB RAM) — sigurno za T4 x2
+    train_ds = CacheDataset(data=train_dicts, transform=get_train_transforms(), cache_rate=0.1, num_workers=4)
+    val_ds   = CacheDataset(data=val_dicts,   transform=get_val_transforms(),   cache_rate=0.1, num_workers=4)
 
     train_loader = DataLoader(
         train_ds,
