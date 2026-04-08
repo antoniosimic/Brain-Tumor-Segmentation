@@ -12,7 +12,7 @@ import torch
 import torch.nn as nn
 from monai.networks.nets import SegResNet, UNet
 
-from configs.config import IN_CHANNELS, MODEL_NAME, NUM_CLASSES, OUT_CHANNELS
+from brats_config.config import IN_CHANNELS, MODEL_NAME, NUM_CLASSES, OUT_CHANNELS
 
 
 def build_model(name: str = MODEL_NAME) -> nn.Module:

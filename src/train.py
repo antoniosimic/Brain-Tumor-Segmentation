@@ -25,7 +25,7 @@ from monai.metrics import DiceMetric
 from monai.transforms import AsDiscrete, Compose
 from monai.utils import set_determinism
 
-from configs.config import (
+from brats_config.config import (
     BATCH_SIZE,
     LEARNING_RATE,
     NUM_CLASSES,

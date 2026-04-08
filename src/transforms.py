@@ -33,7 +33,7 @@ from monai.transforms import (
     ToTensord,
 )
 
-from configs.config import MODALITIES, PATCH_SIZE, PATCHES_PER_VOL
+from brats_config.config import MODALITIES, PATCH_SIZE, PATCHES_PER_VOL
 
 # Sve kljucne rijeci koje ucitavamo
 _ALL_KEYS   = MODALITIES + ["seg"]

@@ -14,7 +14,7 @@ Svaki element liste je dict:
 import random
 from pathlib import Path
 
-from configs.config import DATA_DIR, MODALITIES, VAL_SPLIT, RANDOM_SEED
+from brats_config.config import DATA_DIR, MODALITIES, VAL_SPLIT, RANDOM_SEED
 
 
 def get_patient_dicts(data_dir: Path = DATA_DIR) -> list[dict]:
