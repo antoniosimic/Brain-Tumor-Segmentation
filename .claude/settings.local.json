@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip show:*)",
+      "Read(//c/Users/asimic1/**)",
+      "Read(//c/Users/asimic1/.kaggle/**)",
+      "Bash(pip install:*)",
+      "Bash(export KAGGLE_API_TOKEN=KGAT_6eddc7599bba1dceec200ca227480bdd)",
+      "Bash(kaggle config:*)",
+      "Bash(kaggle datasets:*)",
+      "Bash(tar -xf BraTS2021_00495.tar)",
+      "Bash(tar -xf BraTS2021_00621.tar)",
+      "Bash(mv BraTS2021_00495_*.nii.gz BraTS2021_00495/)",
+      "Bash(mv BraTS2021_00621_*.nii.gz BraTS2021_00621/)",
+      "Bash(mkdir -p /c/Users/asimic1/Documents/GitHub/Brain-Tumor-Segmentation/outputs)",
+      "Bash(python notebooks/explore_data.py)",
+      "Bash(python:*)",
+      "Bash(git checkout:*)",
+      "Bash(.gitignore:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
+    ]
+  }
+}
