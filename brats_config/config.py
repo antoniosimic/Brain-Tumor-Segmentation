@@ -13,8 +13,8 @@ VAL_SPLIT    = 0.2        # 20% pacijenata za validaciju
 RANDOM_SEED  = 42
 
 # ── Patch sampling ───────────────────────────────────────────────────────────
-PATCH_SIZE      = (96, 96, 96)      # velicina 3D patcha — 128 je pre velik za T4 16GB
-PATCHES_PER_VOL = 2                 # patchevi po pacijentu po epohi
+PATCH_SIZE      = (64, 64, 64)      # velicina 3D patcha — sigurno za T4 16GB
+PATCHES_PER_VOL = 1                 # 1 patch po pacijentu — manji efektivni batch
 
 # ── Trening ──────────────────────────────────────────────────────────────────
 BATCH_SIZE    = 1
