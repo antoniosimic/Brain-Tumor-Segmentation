@@ -8,7 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import torch
-from monai.data import CacheDataset, DataLoader, Dataset, decollate_batch
+from monai.data import CacheDataset, DataLoader, Dataset, PersistentDataset, decollate_batch
 from monai.inferers import sliding_window_inference
 from monai.losses import DiceCELoss
 from monai.metrics import DiceMetric
@@ -51,12 +51,17 @@ def main():
 
     print(f"Train: {len(train_dicts)}  |  Val: {len(val_dicts)}")
 
-    # Train: cachiramo sve (MAX_TRAIN_PATIENTS=80 ~11GB, stane u RAM)
-    train_ds = CacheDataset(
+    # Train: PersistentDataset sprema preprocessirane volumene na disk.
+    # Koristi ~1GB RAM umjesto ~20GB (CacheDataset s 150 pacijenata).
+    # Prvi epoch je sporiji (sprema cache), daljnji su brzi.
+    cache_dir = OUTPUT_DIR / "train_cache"
+    cache_dir.mkdir(exist_ok=True)
+    print(f"Cache dir: {cache_dir}")
+
+    train_ds = PersistentDataset(
         data=train_dicts,
         transform=get_train_transforms(),
-        cache_rate=1.0,
-        num_workers=2,
+        cache_dir=cache_dir,
     )
     # Val: bez cachea — koristimo ga samo jednom po validaciji, ne isplati se
     val_ds = Dataset(data=val_dicts, transform=get_val_transforms())
