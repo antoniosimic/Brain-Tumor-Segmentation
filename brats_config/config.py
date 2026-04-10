@@ -18,13 +18,13 @@ PATCHES_PER_VOL = 1                 # 1 patch po pacijentu — manji efektivni b
 
 # ── Trening ──────────────────────────────────────────────────────────────────
 BATCH_SIZE          = 1
-NUM_EPOCHS          = 100
+NUM_EPOCHS          = 200
 LEARNING_RATE       = 1e-4
 VAL_INTERVAL        = 10   # evaluiraj svaku N-tu epohu
 MAX_TRAIN_PATIENTS  = 150  # 150 pacijenata ~21GB RAM, sigurno za T4
 
 # ── Model ────────────────────────────────────────────────────────────────────
-MODEL_NAME   = "unet3d"   # "unet3d" ili "segresnet"
+MODEL_NAME   = "segresnet"  # "unet3d" ili "segresnet"
 IN_CHANNELS  = 4
 OUT_CHANNELS = NUM_CLASSES
 FEATURE_SIZE = 48         # SegResNet; ignorira se za UNet
