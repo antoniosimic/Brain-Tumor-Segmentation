@@ -1,30 +1,30 @@
 from pathlib import Path
 
 # ── Putanje ──────────────────────────────────────────────────────────────────
-ROOT_DIR   = Path(__file__).parent.parent
-DATA_DIR   = ROOT_DIR / "data"
+ROOT_DIR = Path(__file__).parent.parent
+DATA_DIR = ROOT_DIR / "data"
 OUTPUT_DIR = ROOT_DIR / "outputs"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
 # ── Podaci ───────────────────────────────────────────────────────────────────
-MODALITIES   = ["flair", "t1", "t1ce", "t2"]
-NUM_CLASSES  = 4          # 0=zdravo, 1=NCR, 2=edem, 3=ET  (remap iz 0,1,2,4)
-VAL_SPLIT    = 0.2        # 20% pacijenata za validaciju
-RANDOM_SEED  = 42
+MODALITIES = ["flair", "t1", "t1ce", "t2"]
+NUM_CLASSES = 4  # 0=zdravo, 1=NCR, 2=edem, 3=ET  (remap iz 0,1,2,4)
+VAL_SPLIT = 0.2  # 20% pacijenata za validaciju
+RANDOM_SEED = 42
 
 # ── Patch sampling ───────────────────────────────────────────────────────────
-PATCH_SIZE      = (96, 96, 96)      # velicina 3D patcha — veci kontekst, T4 16GB
-PATCHES_PER_VOL = 1                 # 1 patch po pacijentu — manji efektivni batch
+PATCH_SIZE = (96, 96, 96)  # velicina 3D patcha — veci kontekst, T4 16GB
+PATCHES_PER_VOL = 2  # 1 patch po pacijentu — manji efektivni batch
 
 # ── Trening ──────────────────────────────────────────────────────────────────
-BATCH_SIZE          = 1
-NUM_EPOCHS          = 200
-LEARNING_RATE       = 1e-4
-VAL_INTERVAL        = 10   # evaluiraj svaku N-tu epohu
-MAX_TRAIN_PATIENTS  = 150  # 150 pacijenata ~21GB RAM, sigurno za T4
+BATCH_SIZE = 1
+NUM_EPOCHS = 150
+LEARNING_RATE = 1e-4
+VAL_INTERVAL = 10  # evaluiraj svaku N-tu epohu
+MAX_TRAIN_PATIENTS = 300  # 150 pacijenata ~21GB RAM, sigurno za T4
 
 # ── Model ────────────────────────────────────────────────────────────────────
-MODEL_NAME   = "segresnet"  # "unet3d" ili "segresnet"
-IN_CHANNELS  = 4
+MODEL_NAME = "segresnet"  # "unet3d" ili "segresnet"
+IN_CHANNELS = 4
 OUT_CHANNELS = NUM_CLASSES
-FEATURE_SIZE = 48         # SegResNet; ignorira se za UNet
+FEATURE_SIZE = 48  # SegResNet; ignorira se za UNet
