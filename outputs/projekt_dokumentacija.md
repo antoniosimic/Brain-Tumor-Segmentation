@@ -42,7 +42,7 @@ Svaki pacijent ima **4 MRI modaliteta**:
 | **T1ce** | T1 s kontrastom (gadolinium) | Aktivni (enhancing) tumor |
 | **T2** | T2-weighted | Edem, likvorne prostore |
 
-Svaki volumen ima dimenzije **240 × 240 × 155 voksela** (~145 MB po pacijentu).
+Svaki volumen ima dimenzije **240 × 240 × 155 voksela** (~135 MB po pacijentu).
 
 ### 2.2 Klase segmentacije
 
@@ -133,7 +133,7 @@ Koristimo **SegResNet** iz MONAI biblioteke — rezidualna enkoder-dekoder arhit
 | Ulazni kanali | 4 (FLAIR, T1, T1ce, T2) |
 | Izlazni kanali | 4 (klase 0-3) |
 | Prostorne dimenzije | 3D |
-| Broj parametara | ~4.7M |
+| Broj parametara | ~18.8M |
 | Velicina modela | ~72 MB |
 
 ### 4.2 Principi rada
@@ -331,7 +331,7 @@ Iz training loga (validacijski skup, ~250 pacijenata):
 |-------|---------|
 | NCR (Nekroza) | 0.700 |
 | ED (Edem) | 0.817 |
-| ET (Activni tumor) | 0.821 |
+| ET (Aktivni tumor) | 0.821 |
 | **Mean** | **0.7795** |
 
 ### 8.3 Kontekst rezultata

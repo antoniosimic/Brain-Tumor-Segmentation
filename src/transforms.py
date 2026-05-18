@@ -7,7 +7,7 @@ Train pipeline:
   3. Remap labela: 0,1,2,4  ->  0,1,2,3
   4. Spoji 4 modaliteta u jedan 4-kanalni volumen
   5. Z-score normalizacija po kanalu (samo brain vokseli)
-  6. Nasumicni 3D patch (128x128x128), balansiran tumor/ne-tumor
+  6. Nasumicni 3D patch (96x96x96), balansiran tumor/ne-tumor
   7. Augmentacije: flip, rotacija, promjena intenziteta
 
 Val pipeline:
